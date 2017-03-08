@@ -30,6 +30,14 @@ include macros.asm
     menu_numbers db '[n] Print those lines that contain a number', 0
     menu_exit db '[x] Exit the program', 0
     menu_prompt db 'Choose an option: ', 0
+    menu_unknown db 'Invalid option! Choose better next time...', 0
+
+    ; filename
+    filename_prompt db 'Enter the new file name: ', 0
+    filename_confirm db 'Filename changed.', 0
+    filename_max db 127
+    filename_size db 0
+    filename_buffer db 128 dup(0)
 
 
 .code
@@ -52,7 +60,11 @@ include macros.asm
         ; print the status
         write_line status_title
         write_line status_subtitle
-        write_line status_filename
+
+        ; write the current file name
+        write status_filename
+        write_line filename_buffer
+
         write_line status_date
         write_line status_time
 
@@ -94,7 +106,39 @@ include macros.asm
 
         read_execute_x:
 
-        ; unknown option, just return 1 to loop
+        ; 'f' prompts for the file name
+        cmp al, 'f'
+        jne read_execute_f
+
+        ; print the prompt
+        end_line
+        end_line
+        write filename_prompt
+
+        ; read the file name
+        read filename_max
+
+        ; confirm
+        end_line
+        write_line filename_confirm
+
+        ; wait for a character
+        call read_char
+
+        ; done, loop
+        mov ax, 1
+        ret
+
+        read_execute_f:
+
+        ; unknown option
+        end_line
+        write_line menu_unknown
+
+        ; wait for a character
+        call read_char
+
+        ; return 1 to loop
         mov ax, 1
         ret
 

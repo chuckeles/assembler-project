@@ -70,6 +70,7 @@ name io
 
     ; read a string, push the address of the buffer
     ; the buffer must start with 2 bytes - max chars to read, actual # of chars read
+    ; the buffer is automatically 0-terminated
     read_string proc
 
         ; store bp
@@ -82,6 +83,21 @@ name io
         ; call the service 0ah
         mov ah, 0ah
         int 21h
+
+        ; store the start of the string
+        mov bx, [bp + 4]
+
+        ; get the number of chars read
+        inc bx
+        mov dl, [bx]
+        mov dh, 0
+
+        ; move to the end of the string
+        inc bx
+        add bx, dx
+
+        ; 0-terminate
+        mov [bx], 0
 
         ; restore bp
         pop bp
