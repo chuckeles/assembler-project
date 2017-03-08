@@ -11,6 +11,7 @@ name io
 
     ; exports
     public print_string
+    public print_number
     public read_char
     public read_string
 
@@ -50,6 +51,58 @@ name io
         print_string_end:
 
         ; restore bp
+        pop bp
+        ; return and pop the parameter
+        ret 2
+
+    endp
+
+    ; prints a number
+    print_number proc
+
+        ; store bp
+        push bp
+        mov bp, sp
+
+        ; init registers
+        mov bx, 10
+        mov cx, 0
+
+        ; store the number in ax
+        mov ax, [bp + 4]
+
+        print_number_push:
+
+        ; clear the remainder
+        mov dx, 0
+
+        ; divide by 10
+        div bx
+
+        ; push the remainder
+        push dx
+        inc cx
+
+        ; loop if not 0
+        cmp ax, 0
+        jne print_number_push
+
+        print_number_pop:
+
+        ; pop the next digit
+        pop dx
+
+        ; convert to char
+        add dx, '0'
+
+        ; print the char
+        mov ah, 2h
+        int 21h
+
+        ; loop if cx is greater than 0
+        loop print_number_pop
+
+        ; done, restore bp
         pop bp
         ; return and pop the parameter
         ret 2

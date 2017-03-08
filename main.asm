@@ -44,6 +44,8 @@ include macros.asm
 
     ; imports
     extrn print_string : proc
+    extrn print_date : proc
+    extrn print_time : proc
     extrn read_char : proc
     extrn read_string : proc
 
@@ -65,8 +67,15 @@ include macros.asm
         write status_filename
         write_line filename_buffer
 
-        write_line status_date
-        write_line status_time
+        ; write the current date
+        write status_date
+        call print_date
+        end_line
+
+        ; write the current time
+        write status_time
+        call print_time
+        end_line
 
         ; space
         end_line
