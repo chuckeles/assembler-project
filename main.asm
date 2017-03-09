@@ -55,6 +55,7 @@ include macros.asm
     extrn print_time : proc
     extrn print_file_size : proc
     extrn print_current_directory : proc
+    extrn print_file : proc
     extrn read_char : proc
     extrn read_string : proc
 
@@ -190,6 +191,42 @@ include macros.asm
         ret
 
         read_execute_s:
+
+        ; 'p' prints the file contents
+        cmp al, 'p'
+        jne read_execute_p
+        
+        ; open the file
+        clear
+        push offset filename_buffer
+        call open_file
+
+        ; check if there was an error
+        cmp ax, 1
+        je read_execute_p_no_error
+
+        ; there was an error
+        ; it is already printed, wait for input and loop
+        call read_char
+        mov ax, 1
+        ret
+
+        read_execute_p_no_error:
+
+        ; print the file content
+        call print_file
+
+        ; close the file
+        call close_file
+
+        ; wait for input
+        call read_char
+
+        ; done, loop
+        mov ax, 1
+        ret
+
+        read_execute_p:
 
         ; unknown option
         end_line

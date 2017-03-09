@@ -18,6 +18,7 @@ include macros.asm
     public close_file
     public print_file_size
     public print_current_directory
+    public print_file
 
     ; error strings
     error db 'Error: ', 0
@@ -36,6 +37,12 @@ include macros.asm
 
     ; current working directory
     current_directory db 64 dup(0)
+
+    ; buffer for file contents
+    file_buffer db 255 dup(0)
+
+    ; buffer size
+    file_buffer_size db 253
 
 
 .code
@@ -272,6 +279,71 @@ include macros.asm
         ; print the result
         write current_directory
         write_char '\'
+
+        ; done
+        ret
+
+    endp
+
+    ; print file contents
+    ; the file must be opened
+    ; the content will be paginated
+    print_file proc
+
+        ; setup DS
+        mov ax, seg file_handle
+        mov ds, ax
+
+        print_file_loop:
+
+        ; setup registers for reading, set the max bytes to read
+        ; and the pointer to the buffer
+        mov ah, 3fh
+        mov bx, file_handle
+        mov cl, file_buffer_size
+        mov ch, 0
+        lea dx, file_buffer
+
+        ; call service
+        int 21h
+
+        ; if there was an error, stop
+        jc print_file_error
+
+        ; check if we actually read something
+        cmp ax, 0
+        je print_file_end
+
+        ; the string needs to be 0-terminated before printing
+        ; set DI to point to the buffer
+        lea di, file_buffer
+
+        ; move to the end
+        add di, ax
+
+        ; 0-terminate
+        mov [di], 0
+
+        ; now print the string
+        write file_buffer
+
+        ; loop and load another part
+        jmp print_file_loop
+
+        print_file_end:
+
+        ; finally done
+        ret
+
+        print_file_error:
+
+        ; print the error code
+        push ax
+        end_line
+        write error
+        write error_unknown
+        call print_number
+        end_line
 
         ; done
         ret
