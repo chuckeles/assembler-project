@@ -27,8 +27,9 @@ include macros.asm
     menu_title db 'MAIN MENU', 0
     menu_filename db '[f] Change the file name', 0
     menu_print db '[p] Print the file contents', 0
+    menu_size db '[s] Print the file size', 0
     menu_numbers db '[n] Print those lines that contain a number', 0
-    menu_exit db '[x] Exit the program', 0
+    menu_exit db '[q] Quit the program', 0
     menu_prompt db 'Choose an option: ', 0
     menu_unknown db 'Invalid option! Choose better next time...', 0
 
@@ -39,13 +40,20 @@ include macros.asm
     filename_size db 0
     filename_buffer db 128 dup(0)
 
+    ; filesize
+    filesize_name db 'File name: ', 0
+    filesize_size db 'File size: ', 0
+
 
 .code
 
     ; imports
+    extrn open_file : proc
+    extrn close_file : proc
     extrn print_string : proc
     extrn print_date : proc
     extrn print_time : proc
+    extrn print_file_size : proc
     extrn read_char : proc
     extrn read_string : proc
 
@@ -84,6 +92,7 @@ include macros.asm
         write_line menu_title
         write_line menu_filename
         write_line menu_print
+        write_line menu_size
         write_line menu_numbers
         write_line menu_exit
 
@@ -105,8 +114,8 @@ include macros.asm
         ; read the character
         call read_char
 
-        ; 'x' means end the program
-        cmp al, 'x'
+        ; 'q' means end the program
+        cmp al, 'q'
         jne read_execute_x
 
         ; return 0
@@ -120,8 +129,7 @@ include macros.asm
         jne read_execute_f
 
         ; print the prompt
-        end_line
-        end_line
+        clear
         write filename_prompt
 
         ; read the file name
@@ -139,6 +147,47 @@ include macros.asm
         ret
 
         read_execute_f:
+
+        ; 's' prints the file size
+        cmp al, 's'
+        jne read_execute_s
+
+        ; open the file
+        clear
+        push offset filename_buffer
+        call open_file
+
+        ; check if there was an error
+        cmp ax, 1
+        je read_execute_s_no_error
+
+        ; there was an error
+        ; it is already printed, wait for input and loop
+        call read_char
+        mov ax, 1
+        ret
+
+        read_execute_s_no_error:
+
+        ; print the file name
+        write filesize_name
+        write_line filename_buffer
+
+        ; print the size
+        write filesize_size
+        call print_file_size
+
+        ; close the file
+        call close_file
+
+        ; wait for input
+        call read_char
+
+        ; done, loop
+        mov ax, 1
+        ret
+
+        read_execute_s:
 
         ; unknown option
         end_line
