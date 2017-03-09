@@ -54,6 +54,7 @@ include macros.asm
     extrn print_date : proc
     extrn print_time : proc
     extrn print_file_size : proc
+    extrn print_current_directory : proc
     extrn read_char : proc
     extrn read_string : proc
 
@@ -71,8 +72,9 @@ include macros.asm
         write_line status_title
         write_line status_subtitle
 
-        ; write the current file name
+        ; write the current file name with path
         write status_filename
+        call print_current_directory
         write_line filename_buffer
 
         ; write the current date

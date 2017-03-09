@@ -17,6 +17,7 @@ include macros.asm
     public open_file
     public close_file
     public print_file_size
+    public print_current_directory
 
     ; error strings
     error db 'Error: ', 0
@@ -32,6 +33,9 @@ include macros.asm
 
     ; file size
     file_size dd 0
+
+    ; current working directory
+    current_directory db 64 dup(0)
 
 
 .code
@@ -244,6 +248,30 @@ include macros.asm
         write error_unknown
         call print_number
         end_line
+
+        ; done
+        ret
+
+    endp
+
+    ; print the current working directory
+    print_current_directory proc
+
+        ; setup DS
+        mov ax, seg current_directory
+        mov ds, ax
+
+        ; set service params
+        mov ah, 47h
+        mov dl, 0
+        lea si, current_directory
+
+        ; call service
+        int 21h
+
+        ; print the result
+        write current_directory
+        write_char '\'
 
         ; done
         ret
