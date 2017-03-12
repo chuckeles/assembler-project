@@ -18,6 +18,7 @@ include macros.asm
     public close_file
     public print_file_size
     public print_current_directory
+    public print_lines_with_number
     public print_file
 
     ; error strings
@@ -28,6 +29,9 @@ include macros.asm
     error_access_denied           db 'Access denied!', 0
     error_access_mode             db 'Invalid access mode!', 0
     error_unknown                 db 'Unknown error with error code ', 0
+
+    ; string for the number of lines
+    number_of_lines db 'Number of lines with a number: ', 0
 
     ; opened file handle
     file_handle dw 0
@@ -43,6 +47,12 @@ include macros.asm
 
     ; buffer size
     file_buffer_size db 253
+
+    ; flag whether we encountered a number
+    was_number db 0
+    
+    ; number of lines with a number
+    lines_with_number db 0
 
 
 .code
@@ -322,7 +332,7 @@ include macros.asm
         add di, ax
 
         ; 0-terminate
-        mov [di], 0
+        mov byte ptr [di], 0
 
         ; now print the string
         write file_buffer
@@ -344,6 +354,197 @@ include macros.asm
         write error_unknown
         call print_number
         end_line
+
+        ; done
+        ret
+
+    endp
+
+    ; print all lines that contain a number
+    ; presumes a file is already opened
+    print_lines_with_number proc
+
+        ; setup DS
+        mov ax, seg file_handle
+        mov ds, ax
+
+        ; reset flag
+        mov was_number, 0
+
+        ; reset counter
+        mov lines_with_number, 0
+
+        print_lines_buffer:
+
+        ; setup registers for reading, set the max bytes to read
+        ; and the pointer to the buffer
+        mov ah, 3fh
+        mov bx, file_handle
+        mov cl, file_buffer_size
+        mov ch, 0
+        lea dx, file_buffer
+
+        ; read a new buffer
+        int 21h
+
+        ; if there was an error, stop
+        jc print_lines_error_middle
+
+        ; check if we actually read something
+        cmp ax, 0
+        je print_lines_end
+
+        ; reset the pointers,
+        ; si points to the start of the buffer,
+        ; di points to the end
+        lea si, file_buffer
+        lea di, file_buffer
+        add di, ax
+
+        print_lines_chars:
+
+        ; skip the newlines and returns
+        cmp byte ptr [si], 10
+        je print_lines_no_write
+        cmp byte ptr [si], 13
+        je print_lines_no_write
+
+        ; detect a number
+        cmp byte ptr [si], '0'
+        jb print_lines_no_number
+        cmp byte ptr [si], '9'
+        ja print_lines_no_number
+
+        ; found a number!
+        mov was_number, 1
+
+        print_lines_no_number:
+
+        ; write the character
+        write_char [si]
+
+        print_lines_no_write:
+
+        ; check if this is the end of the line
+        cmp byte ptr [si], 10
+        jne print_lines_no_nl
+
+        ; check if there was a number
+        cmp was_number, 1
+        je print_lines_number
+
+        ; jump to the start of the line
+        write_char 13
+
+        ; clear the line
+        call clear_line
+
+        ; reset flag
+        mov was_number, 0
+
+        ; continue
+        jmp print_lines_no_nl
+
+        print_lines_number:
+
+        ; reset flag
+        mov was_number, 0
+
+        ; end the line
+        end_line
+
+        ; increase the counter
+        inc lines_with_number
+
+        print_lines_no_nl:
+
+        ; move to the next char
+        inc si
+
+        ; if this is the end of the buffer, load the next one
+        cmp si, di
+        jae print_lines_buffer
+
+        ; else just loop
+        jmp print_lines_chars
+
+        ; add this because otherwise the first jump is out of range
+        print_lines_error_middle:
+        jmp print_lines_error
+
+        print_lines_end:
+
+        ; check if there was a number
+        cmp was_number, 1
+        je print_lines_end_number
+
+        ; return carriage
+        write_char 13
+
+        ; clear the line
+        call clear_line
+
+        ; skip the instructions for the number
+        jmp print_lines_final
+
+        print_lines_end_number:
+
+        ; increase the counter
+        inc lines_with_number
+
+        ; end the line
+        end_line
+
+        print_lines_final:
+
+        ; leave a space
+        end_line
+
+        ; print the number of lines with a number
+        write number_of_lines
+
+        mov ah, 0
+        mov al, lines_with_number
+        push ax
+
+        call print_number
+        end_line
+
+        ; we're done here
+        ret
+
+        print_lines_error:
+
+        ; print the error code
+        push ax
+        end_line
+        write error
+        write error_unknown
+        call print_number
+        end_line
+
+        ; done
+        ret
+
+    endp
+
+    ; clears just the current line
+    ; presumes the cursor is at the start
+    clear_line proc
+
+        ; set up the counter
+        mov cx, 79
+
+        clear_line_loop:
+
+        ; write space to clear the character
+        write_char ' '
+
+        ; loop
+        loop clear_line_loop
+
+        ; return to the start
+        write_char 13
 
         ; done
         ret

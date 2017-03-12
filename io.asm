@@ -150,7 +150,7 @@ name io
         add bx, dx
 
         ; 0-terminate
-        mov [bx], 0
+        mov byte ptr [bx], 0
 
         ; restore bp
         pop bp
