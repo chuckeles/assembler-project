@@ -57,6 +57,9 @@ include macros.asm
     ; counter for pagination
     lines_on_screen db 0
 
+    ; string about quitting
+    quitting db 'Quitting...', 0
+
 
 .code
 
@@ -308,7 +311,10 @@ include macros.asm
         mov ax, seg file_handle
         mov ds, ax
 
-        print_file_loop:
+        ; reset counter
+        mov lines_on_screen, 0
+
+        print_file_buffer:
 
         ; setup registers for reading, set the max bytes to read
         ; and the pointer to the buffer
@@ -327,22 +333,60 @@ include macros.asm
         ; check if we actually read something
         cmp ax, 0
         je print_file_end
-
-        ; the string needs to be 0-terminated before printing
-        ; set DI to point to the buffer
+        
+        ; set up pointers
+        lea si, file_buffer
         lea di, file_buffer
-
-        ; move to the end
         add di, ax
 
-        ; 0-terminate
-        mov byte ptr [di], 0
+        print_file_chars:
 
-        ; now print the string
-        write file_buffer
+        ; check if this is a new line
+        cmp byte ptr [si], 10
+        jne print_file_no_nl
 
-        ; loop and load another part
-        jmp print_file_loop
+        ; increase counter
+        inc lines_on_screen
+
+        print_file_no_nl:
+
+        ; print the character
+        write_char [si]
+
+        ; move to the next char
+        inc si
+
+        ; check if we need to paginate
+        cmp lines_on_screen, 23
+        jb print_file_no_pagination
+
+        ; wait for input
+        call read_char
+
+        ; if 'q' was pressed, end
+        cmp al, 'q'
+        jne print_file_q
+
+        ; let the user know we are quitting
+        end_line
+        write_line quitting
+
+        ; end
+        ret
+
+        print_file_q:
+
+        ; reset counter
+        mov lines_on_screen, 0
+
+        print_file_no_pagination:
+
+        ; if this is the end of the buffer, load the next one
+        cmp si, di
+        jae print_file_buffer
+
+        ; else just loop
+        jmp print_file_chars
 
         print_file_end:
 
