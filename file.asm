@@ -54,12 +54,16 @@ include macros.asm
     ; number of lines with a number
     lines_with_number db 0
 
+    ; counter for pagination
+    lines_on_screen db 0
+
 
 .code
 
     ; imports
     extrn print_string : proc
     extrn print_number : proc
+    extrn read_char : proc
 
     ; opens a file for reading
     ; the parameter is the offset of the file name and the
@@ -436,6 +440,12 @@ include macros.asm
         ; jump to the start of the line
         write_char 13
 
+        ; fix for too long jumps
+        jmp print_line_jump_fix
+        print_lines_buffer_fix:
+        jmp print_lines_buffer
+        print_line_jump_fix:
+
         ; clear the line
         call clear_line
 
@@ -453,8 +463,19 @@ include macros.asm
         ; end the line
         end_line
 
-        ; increase the counter
+        ; increase the counters
         inc lines_with_number
+        inc lines_on_screen
+
+        ; check if we need to wait
+        cmp lines_on_screen, 22
+        jb print_lines_no_nl
+
+        ; wait for input
+        call read_char
+
+        ; reset counter
+        mov lines_on_screen, 0
 
         print_lines_no_nl:
 
@@ -463,7 +484,7 @@ include macros.asm
 
         ; if this is the end of the buffer, load the next one
         cmp si, di
-        jae print_lines_buffer
+        jae print_lines_buffer_fix
 
         ; else just loop
         jmp print_lines_chars
